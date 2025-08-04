@@ -3,7 +3,7 @@
 #ifndef SIG17SLICE_H
 #define SIG17SLICE_H
 
-#include "layer.h"
+#include "ncnn/layer.h"
 
 class Sig17Slice : public ncnn::Layer
 {

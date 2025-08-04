@@ -1,10 +1,11 @@
-#include "net.h"
+#include "ncnn/net.h"
 #include "colornet.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <colornet/Sig17Slice.h>
+#include <cstdio>
 
 #include <utility>
 #include <vector>
@@ -17,11 +18,11 @@ ImageColorizer::ImageColorizer(std::string model_param, std::string model_bin)
 
 cv::Mat ImageColorizer::colorize(const cv::Mat &bgr_image) {
     if (net_.load_param(model_param_.c_str())) {
-        std::cerr << "Failed to load model parameters" << std::endl;
+        fprintf(stderr, "failed to load model parameters\n");
         return {};
     }
     if (net_.load_model(model_bin_.c_str())) {
-        std::cerr << "Failed to load model" << std::endl;
+        fprintf(stderr, "failed to load model\n");
         return {};
     }
 

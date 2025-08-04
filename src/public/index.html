@@ -1,208 +1,249 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Colorizer</title>
-    <script type="text/javascript" src="./lib.js"></script>
-    <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1>Image Colorizer</h1>
-        <p class="subtitle">Transform your black and white photos with AI-powered colorization</p>
-    </header>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Image Colorizer</title>
+        <script type="text/javascript" src="./lib.js"></script>
+        <link rel="stylesheet" href="./styles.css" />
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>Image Colorizer</h1>
+                <p class="subtitle">
+                    Transform your black and white photos with AI-powered
+                    colorization
+                </p>
+            </header>
 
-    <div class="drag-area">
-        <h3>Drag & Drop</h3>
-        <span>OR</span>
-        <button>Browse File</button>
-        <input type="file" accept="image/*">
-    </div>
+            <div class="drag-area">
+                <h3>Drag & Drop</h3>
+                <span>OR</span>
+                <button>Browse File</button>
+                <input type="file" accept="image/*" />
+            </div>
 
-    <div class="comparison-container">
-        <div class="comparison-header">
-            <div class="comparison-title">Before & After</div>
-            <button class="reset-btn">Start Over</button>
+            <div class="comparison-container">
+                <div class="comparison-header">
+                    <div class="comparison-title">Before & After</div>
+                    <button class="reset-btn">Start Over</button>
+                </div>
+                <div class="image-comparison">
+                    <div class="before-image"></div>
+                    <div class="after-image"></div>
+                </div>
+            </div>
         </div>
-        <div class="image-comparison">
-            <div class="before-image"></div>
-            <div class="after-image"></div>
+
+        <div class="loading-overlay">
+            <div class="spinner"></div>
+            <p class="loading-text"></p>
         </div>
-    </div>
-</div>
 
-<div class="loading-overlay">
-    <div class="spinner"></div>
-    <p class="loading-text"></p>
-</div>
+        <footer class="footer">
+            <p>
+                @asparkoffire (<a href="https://linkedin.com/in/asparkoffire"
+                    >LinkedIn</a
+                >)
+            </p>
+        </footer>
 
-<footer class="footer">
-    <p>@asparkoffire (<a href="https://linkedin.com/in/asparkoffire">LinkedIn</a>)</p>
-</footer>
+        <script>
+            let wasmModule;
+            const dragArea = document.querySelector(".drag-area");
+            const browseBtn = dragArea.querySelector("button");
+            const input = dragArea.querySelector("input");
+            const comparisonContainer = document.querySelector(
+                ".comparison-container",
+            );
+            const beforeImage = document.querySelector(".before-image");
+            const afterImage = document.querySelector(".after-image");
+            const resetBtn = document.querySelector(".reset-btn");
+            const loadingOverlay = document.querySelector(".loading-overlay");
+            const loadingOverlayText = document.querySelector(".loading-text");
 
-<script>
-    let wasmModule;
-    const dragArea = document.querySelector('.drag-area');
-    const browseBtn = dragArea.querySelector('button');
-    const input = dragArea.querySelector('input');
-    const comparisonContainer = document.querySelector('.comparison-container');
-    const beforeImage = document.querySelector('.before-image');
-    const afterImage = document.querySelector('.after-image');
-    const resetBtn = document.querySelector('.reset-btn');
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    const loadingOverlayText = document.querySelector('.loading-text');
+            let originalImageData;
 
-    let originalImageData;
+            // Show loading overlay while WASM loads
+            loadingOverlay.classList.add("active");
+            loadingOverlayText.innerHTML =
+                "Downloading and Loading AI Model...";
+            // Load WASM module
 
-    // Show loading overlay while WASM loads
-    loadingOverlay.classList.add('active');
-    loadingOverlayText.innerHTML = "Downloading and Loading AI Model...";
-    // Load WASM module
-    colornet().then((Module) => {
-        console.log("WASM loaded successfully");
-        wasmModule = Module;
-        loadingOverlay.classList.remove('active');
-    }).catch((err) => {
-        console.error("Error loading WASM:", err);
-        alert("Failed to load the colorization module. Please try again later.");
-        loadingOverlay.classList.remove('active');
-    });
+            Colornet({
+                onAbort: (what) => {
+                    console.error("WASM aborted:", what);
+                },
+                locateFile: (path) => {
+                    console.log("WASM locating:", path);
+                    return path;
+                },
+            })
+                .then((Module) => {
+                    console.log("WASM loaded:", Module);
+                    wasmModule = Module;
+                    loadingOverlay.classList.remove("active");
+                })
+                .catch((err) => {
+                    console.error("WASM init error:", err);
+                });
 
-    // Click browse button to open file dialog
-    browseBtn.addEventListener('click', () => {
-        input.click(); // Trigger the file selection dialog
-    });
+            // Click browse button to open file dialog
+            browseBtn.addEventListener("click", () => {
+                input.click(); // Trigger the file selection dialog
+            });
 
-    // Handle file selection
-    input.addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            handleFile(file); // Handle the selected file
-        }
-    });
+            // Handle file selection
+            input.addEventListener("change", function () {
+                const file = this.files[0];
+                if (file) {
+                    handleFile(file); // Handle the selected file
+                }
+            });
 
-    // Drag and drop events
-    dragArea.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Allow dropping
-        dragArea.classList.add('active'); // Show active state
-    });
+            // Drag and drop events
+            dragArea.addEventListener("dragover", (e) => {
+                e.preventDefault(); // Allow dropping
+                dragArea.classList.add("active"); // Show active state
+            });
 
-    dragArea.addEventListener('dragleave', () => {
-        dragArea.classList.remove('active'); // Remove active state
-    });
+            dragArea.addEventListener("dragleave", () => {
+                dragArea.classList.remove("active"); // Remove active state
+            });
 
-    dragArea.addEventListener('drop', (e) => {
-        e.preventDefault(); // Prevent default action (open the file)
-        dragArea.classList.remove('active'); // Remove active state
+            dragArea.addEventListener("drop", (e) => {
+                e.preventDefault(); // Prevent default action (open the file)
+                dragArea.classList.remove("active"); // Remove active state
 
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleFile(file); // Handle the dropped file
-        }
-    });
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    handleFile(file); // Handle the dropped file
+                }
+            });
 
-    // Reset button
-    resetBtn.addEventListener('click', () => {
-        comparisonContainer.classList.remove('active');
-        beforeImage.style.backgroundImage = '';
-        afterImage.style.backgroundImage = '';
-    });
+            // Reset button
+            resetBtn.addEventListener("click", () => {
+                comparisonContainer.classList.remove("active");
+                beforeImage.style.backgroundImage = "";
+                afterImage.style.backgroundImage = "";
+            });
 
-    // Handle the selected file
-    function handleFile(file) {
-        if (!file.type.match('image.*')) {
-            alert('Please select an image file');
-            return;
-        }
+            // Handle the selected file
+            function handleFile(file) {
+                if (!file.type.match("image.*")) {
+                    alert("Please select an image file");
+                    return;
+                }
 
-        loadingOverlay.classList.add('active'); // Show loading spinner
-        loadingOverlayText.innerHTML = "Processing Image...";
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function() {
-                // Set the "before" image
-                beforeImage.style.backgroundImage = `url(${e.target.result})`;
+                loadingOverlay.classList.add("active"); // Show loading spinner
+                loadingOverlayText.innerHTML = "Processing Image...";
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        // Set the "before" image
+                        beforeImage.style.backgroundImage = `url(${e.target.result})`;
 
-                // Create canvas for pixel data
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+                        // Create canvas for pixel data
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
 
-                // Get raw RGBA pixel data
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        // Get raw RGBA pixel data
+                        const imageData = ctx.getImageData(
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height,
+                        );
 
-                // Process the image with WASM (direct pixel access)
-                processImageDirect(imageData);
-            };
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // Process image directly with RGBA pixel data
-    function processImageDirect(imageData) {
-        if (!wasmModule) {
-            alert("WASM module not loaded.");
-            loadingOverlay.classList.remove('active');
-            return;
-        }
-
-        try {
-            const width = imageData.width;
-            const height = imageData.height;
-            const pixels = imageData.data;
-
-            // Allocate memory for input RGBA data
-            const inputSize = pixels.length;
-            const inputPtr = wasmModule._malloc(inputSize);
-            wasmModule.HEAPU8.set(new Uint8Array(pixels.buffer), inputPtr);
-
-            // Allocate memory for output RGB data (3 bytes per pixel)
-            const outputSize = width * height * 3;
-            const outputPtr = wasmModule._malloc(outputSize);
-
-            // Call the new direct pixel processing function
-            wasmModule._colorize_rgba(inputPtr, width, height, outputPtr, outputSize);
-
-            // Create a new canvas for the output
-            const outputCanvas = document.createElement('canvas');
-            outputCanvas.width = width;
-            outputCanvas.height = height;
-            const outputCtx = outputCanvas.getContext('2d');
-            const outputImageData = outputCtx.createImageData(width, height);
-
-            // Copy RGB data to RGBA ImageData
-            const outputBuffer = wasmModule.HEAPU8.subarray(outputPtr, outputPtr + outputSize);
-            for (let i = 0, j = 0; i < outputSize; i += 3, j += 4) {
-                outputImageData.data[j] = outputBuffer[i];      // R
-                outputImageData.data[j+1] = outputBuffer[i+1];  // G
-                outputImageData.data[j+2] = outputBuffer[i+2];  // B
-                outputImageData.data[j+3] = 255;                // A (fully opaque)
+                        // Process the image with WASM (direct pixel access)
+                        processImageDirect(imageData);
+                    };
+                };
+                reader.readAsDataURL(file);
             }
 
-            // Put the image data on the canvas
-            outputCtx.putImageData(outputImageData, 0, 0);
+            // Process image directly with RGBA pixel data
+            function processImageDirect(imageData) {
+                if (!wasmModule) {
+                    alert("WASM module not loaded.");
+                    loadingOverlay.classList.remove("active");
+                    return;
+                }
 
-            // Convert to data URL and display
-            const resultUrl = outputCanvas.toDataURL();
-            afterImage.style.backgroundImage = `url(${resultUrl})`; // Display the colorized image
-            comparisonContainer.classList.add('active');
+                try {
+                    const width = imageData.width;
+                    const height = imageData.height;
+                    const pixels = imageData.data;
 
-            // Free allocated memory
-            wasmModule._free(inputPtr);
-            wasmModule._free(outputPtr);
-        } catch (error) {
-            console.error("Error processing image:", error);
-            alert("Failed to process the image. Please try again with a different image.");
-        } finally {
-            loadingOverlay.classList.remove('active');
-        }
-    }
-</script>
-</body>
+                    // Allocate memory for input RGBA data
+                    const inputSize = pixels.length;
+                    const inputPtr = wasmModule._malloc(inputSize);
+                    wasmModule.HEAPU8.set(
+                        new Uint8Array(pixels.buffer),
+                        inputPtr,
+                    );
+
+                    // Allocate memory for output RGB data (3 bytes per pixel)
+                    const outputSize = width * height * 3;
+                    const outputPtr = wasmModule._malloc(outputSize);
+
+                    // Call the new direct pixel processing function
+                    wasmModule._colorize_rgba(
+                        inputPtr,
+                        width,
+                        height,
+                        outputPtr,
+                        outputSize,
+                    );
+
+                    // Create a new canvas for the output
+                    const outputCanvas = document.createElement("canvas");
+                    outputCanvas.width = width;
+                    outputCanvas.height = height;
+                    const outputCtx = outputCanvas.getContext("2d");
+                    const outputImageData = outputCtx.createImageData(
+                        width,
+                        height,
+                    );
+
+                    // Copy RGB data to RGBA ImageData
+                    const outputBuffer = wasmModule.HEAPU8.subarray(
+                        outputPtr,
+                        outputPtr + outputSize,
+                    );
+                    for (let i = 0, j = 0; i < outputSize; i += 3, j += 4) {
+                        outputImageData.data[j] = outputBuffer[i]; // R
+                        outputImageData.data[j + 1] = outputBuffer[i + 1]; // G
+                        outputImageData.data[j + 2] = outputBuffer[i + 2]; // B
+                        outputImageData.data[j + 3] = 255; // A (fully opaque)
+                    }
+
+                    // Put the image data on the canvas
+                    outputCtx.putImageData(outputImageData, 0, 0);
+
+                    // Convert to data URL and display
+                    const resultUrl = outputCanvas.toDataURL();
+                    afterImage.style.backgroundImage = `url(${resultUrl})`; // Display the colorized image
+                    comparisonContainer.classList.add("active");
+
+                    // Free allocated memory
+                    wasmModule._free(inputPtr);
+                    wasmModule._free(outputPtr);
+                } catch (error) {
+                    console.error("Error processing image:", error);
+                    alert(
+                        "Failed to process the image. Please try again with a different image.",
+                    );
+                } finally {
+                    loadingOverlay.classList.remove("active");
+                }
+            }
+        </script>
+    </body>
 </html>

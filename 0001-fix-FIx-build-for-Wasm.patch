@@ -1,0 +1,120 @@
+From f7eb4d11f2b2bc6e7ffe89c54dbf74c392e72ccb Mon Sep 17 00:00:00 2001
+From: Kabir Kalsi <kabir.47.chd@gmail.com>
+Date: Mon, 4 Aug 2025 23:12:37 +0530
+Subject: [PATCH] fix: FIx build for Wasm
+
+---
+ .../include/opencv2/core/hal/intrin_sse.hpp   | 26 +++++++++++++------
+ modules/js/CMakeLists.txt                     |  2 +-
+ 2 files changed, 19 insertions(+), 9 deletions(-)
+
+diff --git a/modules/core/include/opencv2/core/hal/intrin_sse.hpp b/modules/core/include/opencv2/core/hal/intrin_sse.hpp
+index 369cd2f..95beafe 100644
+--- a/modules/core/include/opencv2/core/hal/intrin_sse.hpp
++++ b/modules/core/include/opencv2/core/hal/intrin_sse.hpp
+@@ -246,8 +246,13 @@ struct v_uint64x2
+     {
+ #if defined(_MSC_VER) && _MSC_VER >= 1920/*MSVS 2019*/ && defined(_M_X64) && !defined(__clang__)
+         val = _mm_setr_epi64x((int64_t)v0, (int64_t)v1);
++#elif defined(__EMSCRIPTEN__)
++        val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
+ #elif defined(__GNUC__)
+         val = _mm_setr_epi64((__m64)v0, (__m64)v1);
++#else
++        val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
++#endif
+ #else
+         val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
+ #endif
+@@ -278,8 +283,11 @@ struct v_int64x2
+     explicit v_int64x2(__m128i v) : val(v) {}
+     v_int64x2(int64 v0, int64 v1)
+     {
++
+ #if defined(_MSC_VER) && _MSC_VER >= 1920/*MSVS 2019*/ && defined(_M_X64) && !defined(__clang__)
+         val = _mm_setr_epi64x((int64_t)v0, (int64_t)v1);
++#elif defined(__EMSCRIPTEN__)
++        val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
+ #elif defined(__GNUC__)
+         val = _mm_setr_epi64((__m64)v0, (__m64)v1);
+ #else
+@@ -3060,7 +3068,7 @@ inline v_float64x2 v_cvt_f64(const v_int64x2& v)
+ 
+ inline v_int8x16 v_lut(const schar* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+     return v_int8x16(_mm_setr_epi8(tab[idx[0]], tab[idx[1]], tab[idx[ 2]], tab[idx[ 3]], tab[idx[ 4]], tab[idx[ 5]], tab[idx[ 6]], tab[idx[ 7]],
+                                    tab[idx[8]], tab[idx[9]], tab[idx[10]], tab[idx[11]], tab[idx[12]], tab[idx[13]], tab[idx[14]], tab[idx[15]]));
+ #else
+@@ -3072,7 +3080,7 @@ inline v_int8x16 v_lut(const schar* tab, const int* idx)
+ }
+ inline v_int8x16 v_lut_pairs(const schar* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+     return v_int8x16(_mm_setr_epi16(*(const short*)(tab + idx[0]), *(const short*)(tab + idx[1]), *(const short*)(tab + idx[2]), *(const short*)(tab + idx[3]),
+                                     *(const short*)(tab + idx[4]), *(const short*)(tab + idx[5]), *(const short*)(tab + idx[6]), *(const short*)(tab + idx[7])));
+ #else
+@@ -3084,7 +3092,7 @@ inline v_int8x16 v_lut_pairs(const schar* tab, const int* idx)
+ }
+ inline v_int8x16 v_lut_quads(const schar* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+     return v_int8x16(_mm_setr_epi32(*(const int*)(tab + idx[0]), *(const int*)(tab + idx[1]),
+                                     *(const int*)(tab + idx[2]), *(const int*)(tab + idx[3])));
+ #else
+@@ -3100,7 +3108,7 @@ inline v_uint8x16 v_lut_quads(const uchar* tab, const int* idx) { return v_reint
+ 
+ inline v_int16x8 v_lut(const short* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN__)
+     return v_int16x8(_mm_setr_epi16(tab[idx[0]], tab[idx[1]], tab[idx[2]], tab[idx[3]],
+                                     tab[idx[4]], tab[idx[5]], tab[idx[6]], tab[idx[7]]));
+ #else
+@@ -3112,7 +3120,11 @@ inline v_int16x8 v_lut(const short* tab, const int* idx)
+ }
+ inline v_int16x8 v_lut_pairs(const short* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
++    return v_int16x8(_mm_setr_epi32(*(const int*)(tab + idx[0]), *(const int*)(tab + idx[1]),
++                                    *(const int*)(tab + idx[2]), *(const int*)(tab + idx[3])));
++#elif defined(__EMSCRIPTEN__)
++    // Use _mm_setr_epi32 for Emscripten compatibility
+     return v_int16x8(_mm_setr_epi32(*(const int*)(tab + idx[0]), *(const int*)(tab + idx[1]),
+                                     *(const int*)(tab + idx[2]), *(const int*)(tab + idx[3])));
+ #else
+@@ -3132,7 +3144,7 @@ inline v_uint16x8 v_lut_quads(const ushort* tab, const int* idx) { return v_rein
+ 
+ inline v_int32x4 v_lut(const int* tab, const int* idx)
+ {
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN__)
+     return v_int32x4(_mm_setr_epi32(tab[idx[0]], tab[idx[1]],
+                                     tab[idx[2]], tab[idx[3]]));
+ #else
+@@ -3479,5 +3491,3 @@ CV_CPU_OPTIMIZATION_HAL_NAMESPACE_END
+ //! @endcond
+ 
+ }
+-
+-#endif
+diff --git a/modules/js/CMakeLists.txt b/modules/js/CMakeLists.txt
+index 47cba26..d1bd983 100644
+--- a/modules/js/CMakeLists.txt
++++ b/modules/js/CMakeLists.txt
+@@ -71,7 +71,7 @@ endif()
+ 
+ set(EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS} -s TOTAL_MEMORY=128MB -s WASM_MEM_MAX=1GB -s ALLOW_MEMORY_GROWTH=1")
+ set(EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS} -s MODULARIZE=1")
+-set(EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS} -s EXPORT_NAME=\"'cv'\" -s DEMANGLE_SUPPORT=1")
++set(EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS} -s EXPORT_NAME=\"'cv'\"")
+ set(EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS} -s FORCE_FILESYSTEM=1 --use-preload-plugins --bind --post-js ${JS_HELPER} ${COMPILE_FLAGS}")
+ set_target_properties(${the_module} PROPERTIES LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS}")
+ 
+-- 
+2.39.5 (Apple Git-154)
+
